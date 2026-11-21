@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ai nhanh hơn? – Bài 28: Tạo ảnh động</title>
+<style>
+:root{
+  --bg:#0B1026; --bg2:#141B3D; --panel:#1B2452; --line:#2E3A7A; --txt:#F4F6FF; --mut:#A9B3E0;
+  --gold:#FFC83D; --ok:#22C55E; --bad:#EF4444;
+  --A:#E5484D; --B:#3E7BFA; --C:#F5A524; --D:#18A058;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:"Segoe UI",Tahoma,Arial,sans-serif;color:var(--txt);background:radial-gradient(1200px 700px at 50% -10%,#26307A 0%,var(--bg) 60%) fixed;overflow:hidden;user-select:none}
+/* dải phim chạy ở hai mép */
+.film{position:fixed;left:0;right:0;height:34px;background:#05081A;display:flex;align-items:center;overflow:hidden;z-index:1;opacity:.9}
+.film.top{top:0}.film.bot{bottom:0}
+.film .holes{display:flex;gap:22px;padding-left:10px;animation:roll 6s linear infinite;white-space:nowrap}
+.film.bot .holes{animation-direction:reverse}
+.film .holes i{width:26px;height:16px;border-radius:4px;background:#2A3366;flex:none}
+@keyframes roll{to{transform:translateX(-48px)}}
+canvas#fx{position:fixed;inset:0;pointer-events:none;z-index:50}
+.wrap{position:relative;z-index:2;height:100%;padding:52px 4vw 52px;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:14px}
+.brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:.5px}
+.logo{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,var(--gold),#FF7A45);display:grid;place-items:center;color:#1A1A2E;font-size:24px;box-shadow:0 6px 18px rgba(255,160,60,.35)}
+.brand small{display:block;font-weight:600;color:var(--mut);font-size:14px;letter-spacing:0}
+.sp{flex:1}
+.ibtn{background:var(--panel);border:1px solid var(--line);color:var(--txt);padding:10px 16px;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer}
+.ibtn:hover{background:#25307A}
+.screen{display:none;flex:1;min-height:0}
+.screen.active{display:flex}
+/* ---------- màn hình bắt đầu ---------- */
+#sStart{align-items:center;justify-content:center}
+.hero{width:min(1100px,100%);display:grid;grid-template-columns:1.1fr .9fr;gap:34px;align-items:center}
+.title-kick{color:var(--gold);font-weight:800;letter-spacing:4px;font-size:clamp(14px,1.6vw,20px)}
+.title{font-size:clamp(48px,7vw,96px);font-weight:900;line-height:.95;margin:8px 0 14px;text-shadow:0 6px 0 #0A0F2A,0 10px 30px rgba(0,0,0,.4)}
+.title span{color:var(--gold);text-shadow:0 6px 0 #8A3B12,0 10px 30px rgba(0,0,0,.4)}
+.lead{font-size:clamp(17px,1.7vw,22px);color:var(--mut);line-height:1.45}
+.rules{margin-top:20px;display:grid;gap:10px}
+.rules div{display:flex;gap:12px;align-items:center;font-size:clamp(16px,1.5vw,20px)}
+.rules b{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--panel);border:1px solid var(--line);color:var(--gold);flex:none}
+.setup{background:linear-gradient(180deg,#1E2860,#161E4A);border:1px solid var(--line);border-radius:22px;padding:24px;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+.setup h3{font-size:20px;margin-bottom:12px}
+.seg{display:flex;gap:8px;margin-bottom:14px}
+.seg button{flex:1;padding:12px;border-radius:12px;border:1px solid var(--line);background:#121939;color:var(--txt);font-size:17px;font-weight:700;cursor:pointer}
+.seg button.on{background:var(--gold);color:#1A1A2E;border-color:var(--gold)}
+.teams-in{display:grid;gap:10px;margin-bottom:16px}
+.teams-in label{display:flex;align-items:center;gap:10px}
+.teams-in .sw{width:16px;height:38px;border-radius:6px;flex:none}
+.teams-in input{flex:1;padding:11px 14px;border-radius:12px;border:1px solid var(--line);background:#0F1533;color:var(--txt);font-size:17px}
+.big{width:100%;padding:18px;border:none;border-radius:16px;font-size:24px;font-weight:900;cursor:pointer;color:#1A1A2E;background:linear-gradient(90deg,#FFC83D,#FF9F43);box-shadow:0 8px 0 #B86E10,0 14px 30px rgba(255,160,60,.35);transition:transform .08s}
+.big:active{transform:translateY(4px);box-shadow:0 4px 0 #B86E10}
+/* ---------- màn hình câu hỏi ---------- */
+#sQ{flex-direction:column;gap:16px;padding-top:12px}
+.hud{display:flex;align-items:center;gap:14px}
+.qchip{background:var(--panel);border:1px solid var(--line);padding:8px 16px;border-radius:999px;font-weight:800;font-size:clamp(16px,1.6vw,22px)}
+.dots{display:flex;gap:6px}
+.dots i{width:14px;height:14px;border-radius:50%;background:#2A3366}
+.dots i.done{background:var(--gold)}.dots i.now{background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.2)}
+.timer{display:flex;align-items:center;gap:12px;min-width:280px}
+.tbar{flex:1;height:16px;border-radius:999px;background:#0F1533;border:1px solid var(--line);overflow:hidden}
+.tbar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#22C55E,#FFC83D);transition:width 1s linear}
+.tbar.warn i{background:linear-gradient(90deg,#EF4444,#FF7A45)}
+.tnum{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;font-size:28px;font-weight:900;background:var(--panel);border:3px solid var(--gold)}
+.tnum.warn{border-color:var(--bad);color:#FFB4B4;animation:pulse .5s infinite alternate}
+@keyframes pulse{to{transform:scale(1.12)}}
+.qcard{background:#F7F8FF;color:#141B3D;border-radius:22px;padding:clamp(18px,2.6vw,34px);font-size:clamp(26px,3.1vw,44px);font-weight:800;line-height:1.25;text-align:center;box-shadow:0 10px 0 #C9CEF2,0 20px 40px rgba(0,0,0,.35);min-height:20vh;display:grid;place-items:center}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:16px;flex:1;min-height:0}
+.opt{position:relative;display:flex;align-items:center;gap:18px;padding:14px 22px;border:none;border-radius:18px;color:#fff;font-size:clamp(22px,2.5vw,36px);font-weight:800;text-align:left;cursor:pointer;box-shadow:0 8px 0 rgba(0,0,0,.28);transition:transform .1s,filter .2s,opacity .2s}
+.opt:hover:not(:disabled){transform:translateY(-3px);filter:brightness(1.08)}
+.opt:active:not(:disabled){transform:translateY(3px);box-shadow:0 3px 0 rgba(0,0,0,.28)}
+.opt .k{flex:none;width:clamp(48px,4.2vw,64px);height:clamp(48px,4.2vw,64px);border-radius:14px;background:rgba(255,255,255,.22);display:grid;place-items:center;font-size:clamp(24px,2.4vw,34px)}
+.opt[data-k=A]{background:var(--A)}.opt[data-k=B]{background:var(--B)}.opt[data-k=C]{background:var(--C)}.opt[data-k=D]{background:var(--D)}
+.opt.dim{opacity:.28;filter:grayscale(.6)}
+.opt.right{outline:6px solid #fff;animation:pop .5s}
+.opt.right::after{content:"✔";position:absolute;right:18px;font-size:44px}
+.opt.wrong{outline:6px solid #fff;filter:grayscale(.3) brightness(.85)}
+.opt.wrong::after{content:"✖";position:absolute;right:18px;font-size:44px}
+@keyframes pop{50%{transform:scale(1.04)}}
+@keyframes in{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.ctrl{display:flex;gap:12px;align-items:center}
+.ctrl .sp{flex:1}
+.nbtn{padding:14px 26px;border:none;border-radius:14px;font-size:22px;font-weight:900;cursor:pointer;color:#1A1A2E;background:var(--gold);box-shadow:0 6px 0 #B88A10}
+.nbtn:active{transform:translateY(3px);box-shadow:0 3px 0 #B88A10}
+/* thông báo đúng / sai */
+.toast{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.6);opacity:0;z-index:40;pointer-events:none;padding:26px 60px;border-radius:26px;font-size:clamp(40px,6vw,84px);font-weight:900;letter-spacing:2px;box-shadow:0 20px 60px rgba(0,0,0,.5);transition:all .25s}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.toast.ok{background:var(--ok)}.toast.bad{background:var(--bad)}.toast.time{background:#7C3AED}
+.feedback{display:none;background:linear-gradient(180deg,#1E2860,#161E4A);border:1px solid var(--line);border-radius:18px;padding:16px 20px;font-size:clamp(18px,1.8vw,24px);line-height:1.4}
+.feedback.show{display:block;animation:in .35s both}
+.feedback .head{font-weight:900;margin-bottom:6px}
+.feedback .head.ok{color:#7CF0A6}.feedback .head.bad{color:#FFA3A3}
+.award{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;align-items:center}
+.award span{color:var(--mut);font-size:18px}
+.award button{padding:8px 16px;border-radius:999px;border:2px solid;background:transparent;color:#fff;font-weight:800;font-size:18px;cursor:pointer}
+/* bảng điểm */
+.board{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.team{display:flex;align-items:center;gap:10px;background:var(--panel);border:2px solid;border-radius:16px;padding:8px 12px;min-width:200px}
+.team .nm{font-weight:800;font-size:18px;flex:1}
+.team .sc{font-size:28px;font-weight:900;min-width:36px;text-align:center}
+.team button{width:34px;height:34px;border-radius:10px;border:1px solid var(--line);background:#0F1533;color:#fff;font-size:20px;font-weight:900;cursor:pointer}
+.team.bump{animation:pop .45s}
+/* kết thúc */
+#sEnd{flex-direction:column;align-items:center;justify-content:center;gap:12px}
+#sEnd h1{font-size:clamp(46px,6vw,84px);font-weight:900}
+#sEnd h1 span{color:var(--gold)}
+.endsub{font-size:clamp(20px,2vw,28px);color:var(--mut)}
+.podium{display:flex;align-items:flex-end;gap:22px;margin:16px 0 10px}
+.pod{display:flex;flex-direction:column;align-items:center;gap:8px;width:170px}
+.pod .nm{font-weight:800;font-size:20px;text-align:center}
+.pod .bar{width:100%;border-radius:16px 16px 6px 6px;display:grid;place-items:center;font-size:42px;font-weight:900;box-shadow:0 10px 0 rgba(0,0,0,.25)}
+.endbtns{display:flex;gap:14px}
+.keys{color:var(--mut);font-size:14px;text-align:center;margin-top:6px}
+@media (max-width:820px){.hero{grid-template-columns:1fr}.opts{grid-template-columns:1fr}.timer{min-width:160px}}
+</style>
+</head>
+<body>
+<div class="film top"><div class="holes" id="h1"></div></div>
+<div class="film bot"><div class="holes" id="h2"></div></div>
+<canvas id="fx"></canvas>
+<div class="toast" id="toast"></div>
+
+<div class="wrap">
+  <div class="topbar">
+    <div class="brand"><div class="logo">▶</div><div>AI NHANH HƠN?<small>Tin học 11 · Bài 28: Tạo ảnh động</small></div></div>
+    <div class="sp"></div>
+    <button class="ibtn" id="muteBtn" title="Bật/tắt âm thanh (phím M)">🔊 Âm thanh</button>
+    <button class="ibtn" id="fsBtn" title="Toàn màn hình (phím F)">⛶ Toàn màn hình</button>
+  </div>
+
+  <!-- MÀN HÌNH BẮT ĐẦU -->
+  <section class="screen active" id="sStart">
+    <div class="hero">
+      <div>
+        <div class="title-kick">TRÒ CHƠI ÔN TẬP · BÀI 28</div>
+        <div class="title">AI NHANH<br><span>HƠN?</span></div>
+        <p class="lead">Ôn lại các thao tác trên lớp ảnh và cách thiết lập ảnh động trong GIMP trước tiết thực hành.</p>
+        <div class="rules">
+          <div><b>8</b>câu hỏi trắc nghiệm, mỗi câu 20 giây</div>
+          <div><b>✋</b>Đội giơ tay nhanh nhất được chọn đáp án</div>
+          <div><b>★</b>Trả lời đúng: GV cộng 1 điểm cho đội</div>
+        </div>
+      </div>
+      <div class="setup">
+        <h3>Số đội chơi</h3>
+        <div class="seg" id="seg"><button data-n="2">2 đội</button><button data-n="3">3 đội</button><button data-n="4" class="on">4 đội</button></div>
+        <div class="teams-in" id="teamsIn"></div>
+        <button class="big" id="startBtn">▶ BẮT ĐẦU</button>
+        <div class="keys">Phím tắt: 1–4 chọn đáp án · Enter câu tiếp · F toàn màn hình · M âm thanh</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MÀN HÌNH CÂU HỎI -->
+  <section class="screen" id="sQ">
+    <div class="hud">
+      <div class="qchip" id="qnum">Câu 1/8</div>
+      <div class="dots" id="dots"></div>
+      <div class="sp"></div>
+      <div class="timer"><div class="tbar" id="tbar"><i id="tfill"></i></div><div class="tnum" id="tnum">20</div></div>
+    </div>
+    <div class="qcard" id="qtext"></div>
+    <div class="opts" id="opts"></div>
+    <div class="feedback" id="fb"></div>
+    <div class="ctrl">
+      <div class="board" id="board"></div>
+      <div class="sp"></div>
+      <button class="ibtn" id="revealBtn">👁 Hiện đáp án</button>
+      <button class="nbtn" id="nextBtn">Câu tiếp ➜</button>
+    </div>
+  </section>
+
+  <!-- MÀN HÌNH KẾT THÚC -->
+  <section class="screen" id="sEnd">
+    <h1>🏆 <span>KẾT QUẢ</span></h1>
+    <div class="endsub" id="endSub"></div>
+    <div class="podium" id="podium"></div>
+    <div class="endbtns"><button class="big" style="width:auto;padding:14px 30px;font-size:20px" id="againBtn">↻ Chơi lại</button><button class="ibtn" id="homeBtn">⌂ Màn hình đầu</button></div>
+  </section>
+</div>
+
+<script>
+const QUESTIONS = [
+  { q: "Lệnh nào dùng để mở một hay nhiều tệp ảnh thành các lớp ảnh mới trong GIMP?",
+    o: ["File → Open", "File → Open as Layers", "File → Export As", "Layer → New Layer"], a: 1,
+    e: "Chọn <b>File → Open as Layers</b>, chọn các ảnh rồi nháy Open. Cũng có thể kéo thả ảnh vào màn hình làm việc của GIMP." },
+  { q: "Khi tạo ảnh động trong GIMP, mỗi lớp ảnh tương ứng với gì?",
+    o: ["Một hiệu ứng", "Một khung hình", "Một kênh màu", "Một tệp GIF"], a: 1,
+    e: "Mỗi lớp ảnh là <b>một khung hình</b>; các khung hình hiện lần lượt <b>từ lớp dưới cùng lên trên</b>." },
+  { q: "Một lớp đã sửa xong, muốn không bị sửa nhầm khi chỉnh các lớp khác thì em làm gì?",
+    o: ["Gộp lớp (Merge Down)", "Ẩn lớp", "Khoá lớp (Lock)", "Xoá lớp"], a: 2,
+    e: "<b>Khoá lớp</b>: chọn lớp trong hộp thoại Layer rồi nháy vào thuộc tính muốn khoá (điểm ảnh, vị trí và kích thước, kênh alpha)." },
+  { q: "Lệnh Merge Down gộp lớp đang chọn với lớp nào?",
+    o: ["Lớp trên cùng", "Lớp nền dưới cùng", "Lớp được hiển thị ngay bên dưới", "Tất cả các lớp"], a: 2,
+    e: "Merge Down gộp lớp được chọn với <b>lớp được hiển thị ngay sát bên dưới</b> nó (SGV)." },
+  { q: "Lớp ảnh có tên “Frame 2 (1000ms)” sẽ được hiển thị trong bao lâu?",
+    o: ["0,1 giây", "1 giây", "10 giây", "1000 giây"], a: 1,
+    e: "Cụm <b>(Xms)</b> sau tên lớp là số mili-giây hiển thị: 1000 ms = <b>1 giây</b>." },
+  { q: "Delay between frames where unspecified là 2000. Lớp “Frame 4” (không ghi thời gian) hiển thị bao lâu?",
+    o: ["0,5 giây", "1 giây", "2 giây", "Không hiển thị"], a: 2,
+    e: "Khung hình chưa được đặt thời gian dùng giá trị Delay: 2000 ms = <b>2 giây</b>." },
+  { q: "Trong hộp thoại xuất GIF, muốn ảnh động lặp lại liên tục em nháy chọn ô nào?",
+    o: ["Interlace", "As animation", "Loop forever", "GIF comment"], a: 2,
+    e: "<b>Loop forever</b>: ảnh lặp lại sau mỗi lượt. Còn <b>As animation</b> là ô để xuất thành ảnh động." },
+  { q: "Ảnh có 5 lớp, dùng hiệu ứng Blend với 5 khung hình trung gian. GIMP tạo ra bao nhiêu khung hình trung gian?",
+    o: ["10", "15", "20", "25"], a: 1,
+    e: "Lớp dưới cùng là lớp nền; giữa mỗi cặp trong 4 lớp còn lại có 5 khung hình: <b>5 × 3 = 15</b>." }
+];
+const TEAM_COLORS = ["#E5484D", "#3E7BFA", "#F5A524", "#18A058"];
+const LIMIT = 20;
+let nTeams = 4, teams = [], cur = 0, answered = false, tLeft = LIMIT, tick = null, muted = false;
+const $ = (id) => document.getElementById(id);
+$("h1").innerHTML = $("h2").innerHTML = "<i></i>".repeat(80);
+
+/* âm thanh WebAudio (chạy offline) */
+let ac = null;
+function beep(f, d, type = "sine", v = .15, w = 0) {
+  if (muted) return;
+  try { ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + w;
+    o.type = type; o.frequency.setValueAtTime(f, t); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.001, t + d);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d); } catch (e) {}
+}
+const sOk = () => { beep(660, .12, "triangle"); beep(880, .14, "triangle", .15, .1); beep(1320, .25, "triangle", .12, .22); };
+const sBad = () => { beep(220, .25, "sawtooth", .1); beep(160, .35, "sawtooth", .1, .18); };
+const sTick = () => beep(1000, .05, "square", .06);
+const sWin = () => [523, 659, 784, 1047].forEach((f, i) => beep(f, .3, "triangle", .14, i * .15));
+
+/* thiết lập đội */
+function renderTeamInputs() {
+  const old = [...$("teamsIn").querySelectorAll("input")].map(i => i.value);
+  $("teamsIn").innerHTML = Array.from({ length: nTeams }, (_, i) =>
+    `<label><span class="sw" style="background:${TEAM_COLORS[i]}"></span><input value="${old[i] || "Đội " + (i + 1)}" maxlength="18" aria-label="Tên đội ${i + 1}"></label>`).join("");
+}
+$("seg").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return;
+  nTeams = +b.dataset.n; [...$("seg").children].forEach(x => x.classList.toggle("on", x === b)); renderTeamInputs(); });
+renderTeamInputs();
+
+function show(id) { document.querySelectorAll(".screen").forEach(s => s.classList.toggle("active", s.id === id)); }
+function renderBoard() {
+  $("board").innerHTML = teams.map((t, i) => `<div class="team" id="team${i}" style="border-color:${t.c}">
+    <span class="nm" style="color:${t.c}">${t.name}</span>
+    <button data-i="${i}" data-d="-1" aria-label="Trừ điểm">−</button><span class="sc">${t.s}</span><button data-i="${i}" data-d="1" aria-label="Cộng điểm">+</button></div>`).join("");
+}
+function addPoint(i, d) { const t = teams[i]; t.s = Math.max(0, t.s + d); renderBoard(); $("team" + i).classList.add("bump"); if (d > 0) beep(990, .12, "triangle"); }
+$("board").addEventListener("click", e => { const b = e.target.closest("button"); if (b) addPoint(+b.dataset.i, +b.dataset.d); });
+
+function startGame() {
+  teams = [...$("teamsIn").querySelectorAll("input")].map((inp, i) => ({ name: inp.value.trim() || "Đội " + (i + 1), s: 0, c: TEAM_COLORS[i] }));
+  cur = 0; renderBoard(); show("sQ"); loadQ();
+}
+function loadQ() {
+  const Q = QUESTIONS[cur]; answered = false;
+  $("qnum").textContent = `Câu ${cur + 1}/${QUESTIONS.length}`;
+  $("dots").innerHTML = QUESTIONS.map((_, i) => `<i class="${i < cur ? "done" : i === cur ? "now" : ""}"></i>`).join("");
+  $("qtext").textContent = Q.q; $("qtext").style.animation = "none"; void $("qtext").offsetWidth; $("qtext").style.animation = "in .4s both";
+  $("fb").classList.remove("show");
+  $("nextBtn").textContent = cur === QUESTIONS.length - 1 ? "Xem kết quả 🏆" : "Câu tiếp ➜";
+  $("opts").innerHTML = "";
+  Q.o.forEach((t, i) => {
+    const b = document.createElement("button"); b.className = "opt"; b.dataset.k = "ABCD"[i];
+    b.innerHTML = `<span class="k">${"ABCD"[i]}</span><span>${t}</span>`;
+    b.style.animation = `in .45s ${i * .08}s both`; b.addEventListener("click", () => choose(i)); $("opts").appendChild(b);
+  });
+  startTimer();
+}
+function startTimer() {
+  clearInterval(tick); tLeft = LIMIT; drawTimer();
+  tick = setInterval(() => { tLeft--; drawTimer(); if (tLeft <= 5 && tLeft > 0) sTick();
+    if (tLeft <= 0) { clearInterval(tick); if (!answered) reveal(null, true); } }, 1000);
+}
+function drawTimer() {
+  const v = Math.max(0, tLeft); $("tnum").textContent = v; $("tfill").style.width = (v / LIMIT * 100) + "%";
+  const w = v <= 5 && v > 0; $("tnum").classList.toggle("warn", w); $("tbar").classList.toggle("warn", v <= 5);
+}
+function toast(t, cls) { const el = $("toast"); el.textContent = t; el.className = "toast " + cls + " show"; setTimeout(() => el.classList.remove("show"), 1100); }
+function choose(i) { if (!answered) reveal(i); }
+function reveal(picked, timeout) {
+  answered = true; clearInterval(tick); $("tnum").classList.remove("warn");
+  const Q = QUESTIONS[cur], ok = picked === Q.a;
+  [...$("opts").children].forEach((b, i) => { b.disabled = true;
+    if (i === Q.a) b.classList.add("right"); else if (i === picked) b.classList.add("wrong"); else b.classList.add("dim"); });
+  let head, cls;
+  if (picked === null) { head = timeout ? "⏰ Hết giờ!" : "👁 Đáp án"; cls = "bad"; if (timeout) { sBad(); toast("HẾT GIỜ!", "time"); } }
+  else if (ok) { head = "🎉 Chính xác!"; cls = "ok"; sOk(); burst(120); toast("ĐÚNG RỒI!", "ok"); }
+  else { head = "❌ Chưa đúng!"; cls = "bad"; sBad(); toast("CHƯA ĐÚNG!", "bad"); }
+  $("fb").innerHTML = `<div class="head ${cls}">${head} Đáp án: ${"ABCD"[Q.a]}. ${Q.o[Q.a]}</div><div>${Q.e}</div>` +
+    (ok ? `<div class="award"><span>Cộng 1 điểm cho:</span>${teams.map((t, i) => `<button data-i="${i}" style="border-color:${t.c}">${t.name}</button>`).join("")}</div>` : "");
+  $("fb").classList.add("show");
+  const aw = $("fb").querySelector(".award");
+  if (aw) aw.addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; addPoint(+b.dataset.i, 1); aw.innerHTML = `<span>Đã cộng điểm cho <b style="color:${teams[+b.dataset.i].c}">${teams[+b.dataset.i].name}</b> ✔</span>`; });
+}
+function next() { if (!answered) { reveal(null); return; } if (cur < QUESTIONS.length - 1) { cur++; loadQ(); } else endGame(); }
+$("startBtn").addEventListener("click", startGame);
+$("nextBtn").addEventListener("click", next);
+$("revealBtn").addEventListener("click", () => { if (!answered) reveal(null); });
+
+function endGame() {
+  clearInterval(tick); show("sEnd");
+  const sorted = [...teams].sort((a, b) => b.s - a.s), top = sorted[0].s, win = sorted.filter(t => t.s === top);
+  $("endSub").textContent = top === 0 ? "Chưa đội nào ghi điểm – cùng ôn lại nhé!" :
+    win.length > 1 ? `Đồng hạng nhất: ${win.map(w => w.name).join(", ")}` : `Chúc mừng ${win[0].name}!`;
+  const hs = [240, 180, 135, 100], md = ["🥇", "🥈", "🥉", "🎖"];
+  const order = sorted.length >= 3 ? [1, 0, 2, 3].filter(i => i < sorted.length) : sorted.map((_, i) => i);
+  $("podium").innerHTML = order.map(r => { const t = sorted[r]; return `<div class="pod" style="animation:in .6s ${r * .15}s both">
+    <div class="nm">${md[r]} ${t.name}</div><div class="bar" style="height:${hs[r]}px;background:${t.c}">${t.s}</div></div>`; }).join("");
+  sWin(); burst(300);
+}
+$("againBtn").addEventListener("click", startGame);
+$("homeBtn").addEventListener("click", () => show("sStart"));
+
+function fs() { try { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); } catch (e) {} }
+$("fsBtn").addEventListener("click", fs);
+$("muteBtn").addEventListener("click", () => { muted = !muted; $("muteBtn").textContent = muted ? "🔇 Tắt tiếng" : "🔊 Âm thanh"; });
+document.addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT") return;
+  const k = e.key.toLowerCase();
+  if (k === "f") fs(); else if (k === "m") $("muteBtn").click();
+  else if ($("sQ").classList.contains("active")) { if ("1234".includes(k) && k) choose(+k - 1); else if (k === "enter" || k === "arrowright") next(); }
+  else if ($("sStart").classList.contains("active") && k === "enter") startGame();
+});
+
+/* pháo giấy */
+const cv = $("fx"), cx = cv.getContext("2d"); let parts = [];
+function size() { cv.width = innerWidth; cv.height = innerHeight; } size(); addEventListener("resize", size);
+function burst(n) { const cols = ["#FFC83D", "#E5484D", "#3E7BFA", "#18A058", "#F5A524", "#fff"];
+  for (let i = 0; i < n; i++) parts.push({ x: innerWidth / 2, y: innerHeight * .45, vx: (Math.random() - .5) * 18, vy: -Math.random() * 16 - 4, r: Math.random() * 6 + 4, c: cols[i % cols.length], a: Math.random() * 6, l: 120 }); }
+(function loop() { cx.clearRect(0, 0, cv.width, cv.height);
+  parts = parts.filter(p => p.l-- > 0); parts.forEach(p => { p.vy += .45; p.x += p.vx; p.y += p.vy; p.a += .2;
+    cx.save(); cx.translate(p.x, p.y); cx.rotate(p.a); cx.fillStyle = p.c; cx.fillRect(-p.r / 2, -p.r / 2, p.r, p.r * .6); cx.restore(); });
+  requestAnimationFrame(loop); })();
+</script>
+</body>
+</html>
